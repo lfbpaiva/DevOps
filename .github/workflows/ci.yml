@@ -32,3 +32,40 @@ jobs:
 
       - name: Testar entrada pelo terminal
         run: python -m app.cli --preco 100 --quantidade 2 --desconto 10 --cupom DEVOPS10
+
+  livraria:
+    name: testes-livraria-docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Construir imagem de frete
+        run: docker build -t micro-livraria/shipping -f shipping.Dockerfile .
+
+      - name: Testar integracao dos servicos
+        run: |
+          docker run -d --name shipping -p 127.0.0.1:3001:3001 micro-livraria/shipping
+          node services/inventory/index.js > /tmp/inventory.log 2>&1 &
+          node services/controller/index.js > /tmp/controller.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:3000/shipping/85810000; then
+              break
+            fi
+            sleep 1
+          done
+          node --test tests/livraria.test.cjs
+
+      - name: Encerrar container
+        if: always()
+        run: docker rm -f shipping || true

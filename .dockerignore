@@ -1,0 +1,10 @@
+node_modules/
+.git/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.env
+*.log
+*.pdf
